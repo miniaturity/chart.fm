@@ -1,4 +1,4 @@
-type period = "overall" | "7day" | "1month" | "3month" | "6month" | "12month";
+export type period = "overall" | "7day" | "1month" | "3month" | "6month" | "12month";
 const api = "https://lastfm.nkko.workers.dev/?method=user.getTopAlbums";
 
 export async function getTopAlbums(user: string, period: period): Promise<TopAlbumsResponse | null> {

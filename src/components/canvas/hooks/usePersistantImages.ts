@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { get, set, keys, del } from "idb-keyval";
-import { CanvasImageProps } from "../components/canvas/Canvas";
+import { CanvasImageProps } from "../Canvas";
 
 export interface StoredImage {
   id: string;
@@ -9,7 +9,6 @@ export interface StoredImage {
   blob: Blob;
   data: CanvasImageProps;
 }
-
 
 export function usePersistentImages() {
   const [images, setImages] = useState<StoredImage[]>([]);

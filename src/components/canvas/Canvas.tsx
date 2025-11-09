@@ -1,14 +1,16 @@
-import React, { PropsWithChildren, useRef } from "react";
+import React, { PropsWithChildren, useEffect, } from "react";
 import { Stage, Layer } from "react-konva";
 import Konva from "konva";
 import { EditableImage } from "./Image";
 import { Image } from "konva/lib/shapes/Image";
+import { useCanvas } from "./hooks/useCanvas";
 
 type repeat = "repeat" | "repeat-x" | "repeat-y" | "no-repeat";
 
 export interface CanvasImageProps {
   id: string;
   name: string;
+  layerId: string;
   src: string;
   pos: {
     x: number;
@@ -20,7 +22,7 @@ export interface CanvasImageProps {
     opacity?: number;
     fill?: string;
     fillImage?: {
-      img: Image;
+      img: HTMLImageElement;
       x: number;
       y: number;
       repeat: repeat;
@@ -28,39 +30,70 @@ export interface CanvasImageProps {
   };
 }
 
-interface CanvasProps {
-  images: CanvasImageProps[];
-  setImages: React.Dispatch<React.SetStateAction<CanvasImageProps[]>>;
+export interface CanvasProps {
   size: {
     width: number;
     height: number;
   };
+  c: ReturnType<typeof useCanvas>
+  stageRef:  React.RefObject<Konva.Stage | null>
 }
 
 const Canvas = (props: PropsWithChildren<CanvasProps>) => {
-  const { images, setImages, size } = props;
-  const stageRef = useRef<Konva.Stage>(null);
+  const { size, c, stageRef } = props;
 
-  const exportAsImage = () => {
-    const uri = stageRef.current?.toDataURL({ pixelRatio: 2 });
-    if (!uri) return;
-
-    const link = document.createElement("a");
-    link.download = "collage.png";
-    link.href = uri;
-    link.click();
+  const handleStageClick = (e: any) => {
+    if (e.target === e.target.getStage()) {
+      c.image.setSelectedId(null);
+    }
   };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (!c.image.selectedId) return;
+
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      c.image.setImages((prev) => prev.filter(img => img.id !== c.image.selectedId));
+      c.image.setSelectedId(null);
+      e.preventDefault();
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+      const imgToDuplicate = c.image.images.find(img => img.id === c.image.selectedId);
+      if (imgToDuplicate) {
+        const newId = `${Date.now()}_dup`;
+        c.image.setImages((prev) => [
+          ...prev,
+          {
+            ...imgToDuplicate,
+            id: newId,
+            pos: {
+              x: imgToDuplicate.pos.x + 20,
+              y: imgToDuplicate.pos.y + 20
+            }
+          }
+        ]);
+      }
+      e.preventDefault();
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [c.image.selectedId, c.image.images]);
 
   return (
     <>
       <Stage width={size.width} height={size.height} ref={stageRef} >
         <Layer>
-          {images.map((img) => (
+          {c.image.images.map((img) => (
             <EditableImage
               key={img.id}
               {...img}
+              isSelected={img.id === c.image.selectedId}
+              onSelect={() => c.image.setSelectedId(img.id)}
               onChange={(newProps) =>
-                setImages((prev) =>
+                c.image.setImages((prev) =>
                   prev.map((p) =>
                     p.id === img.id ? { ...p, ...newProps } : p
                   )
@@ -70,7 +103,6 @@ const Canvas = (props: PropsWithChildren<CanvasProps>) => {
           ))}
         </Layer>
       </Stage>
-      <button onClick={exportAsImage} id="export">Export</button>
     </>
   );
 };
